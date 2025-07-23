@@ -1,55 +1,101 @@
-import {
+import { UpdateCommand, type UpdateCommandInput } from '@aws-sdk/lib-dynamodb';
+import type {
   APIGatewayProxyEventPathParameters,
   APIGatewayProxyHandler,
-} from 'aws-lambda'
-import { TodoItem } from '../interfaces/todo-item'
-import { dynamoDb } from '../lib/dynamodb'
-import { UpdateCommand, UpdateCommandInput } from '@aws-sdk/lib-dynamodb'
+  APIGatewayProxyResult,
+} from 'aws-lambda';
+import { z } from 'zod';
+import { dynamoDb } from '../lib/dynamodb';
+import { TABLE_NAME } from '../constants';
 
-const tableName = process.env.TABLE_NAME
+const todoUpdateSchema = z.object({
+  task: z.string().min(1, 'Task cannot be empty'),
+  completed: z.boolean(),
+});
+
+type TodoUpdateData = z.infer<typeof todoUpdateSchema>;
+
+const createResponse = (
+  statusCode: number,
+  body: Record<string, unknown>
+): APIGatewayProxyResult => ({
+  statusCode,
+  body: JSON.stringify(body),
+  headers: { 'Content-Type': 'application/json' },
+});
+
+const ERROR_MESSAGES = {
+  BODY_REQUIRED: 'Request body is required',
+  INVALID_JSON: 'Invalid JSON in request body',
+  ID_REQUIRED: "Path parameter 'id' is required",
+  INTERNAL_ERROR: 'Internal server error',
+} as const;
+
+const validateRequestBody = (body: string | null): TodoUpdateData => {
+  if (!body) {
+    throw new Error(ERROR_MESSAGES.BODY_REQUIRED);
+  }
+
+  try {
+    const parsedData = JSON.parse(body);
+    return todoUpdateSchema.parse(parsedData);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(
+        `Validation error: ${error.issues.map((e) => e.message).join(', ')}`
+      );
+    }
+    throw new Error(ERROR_MESSAGES.INVALID_JSON);
+  }
+};
+
+const validatePathParameters = (
+  pathParameters: APIGatewayProxyEventPathParameters | null
+): string => {
+  if (!pathParameters?.id) {
+    throw new Error(ERROR_MESSAGES.ID_REQUIRED);
+  }
+  return pathParameters.id;
+};
+
+const updateTodoInDatabase = async (id: string, data: TodoUpdateData) => {
+  const params: UpdateCommandInput = {
+    TableName: TABLE_NAME,
+    Key: { id },
+    UpdateExpression: 'SET task = :task, completed = :completed',
+    ExpressionAttributeValues: {
+      ':task': data.task,
+      ':completed': data.completed,
+    },
+    ReturnValues: 'ALL_NEW',
+  };
+
+  const result = await dynamoDb.send(new UpdateCommand(params));
+  return result.Attributes || {};
+};
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
-    if (!event.body) {
-      throw new Error('Request body is undefined or null')
-    }
+    const updateData = validateRequestBody(event.body);
+    const todoId = validatePathParameters(event.pathParameters);
 
-    const data = JSON.parse(event.body) as Omit<TodoItem, 'id'>
-    const { id } = event.pathParameters as APIGatewayProxyEventPathParameters
+    const updatedTodo = await updateTodoInDatabase(todoId, updateData);
 
-    if (!id) {
-      throw new Error("Path parameter 'id' is missing")
-    }
-
-    const params: UpdateCommandInput = {
-      TableName: tableName as string,
-      Key: { id },
-      UpdateExpression: 'set task = :task, completed = :completed',
-      ExpressionAttributeValues: {
-        ':task': data.task,
-        ':completed': data.completed,
-      },
-      ReturnValues: 'ALL_NEW',
-    }
-
-    const result = await dynamoDb.send(new UpdateCommand(params))
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify(result.Attributes),
-    }
+    return createResponse(200, updatedTodo);
   } catch (error) {
-    console.error('Error updating to-do item:', error)
+    console.error('Error updating todo item:', error);
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: 'Could not update to-do item',
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-        requestId: event.requestContext.requestId,
-      }),
+    if (error instanceof Error) {
+      const message = error.message;
+      if (
+        message.includes('Validation error') ||
+        message.includes('Request body') ||
+        message.includes('Path parameter')
+      ) {
+        return createResponse(400, { error: message });
+      }
     }
+
+    return createResponse(500, { error: ERROR_MESSAGES.INTERNAL_ERROR });
   }
-}
+};

@@ -1,71 +1,81 @@
-import { APIGatewayProxyHandler } from 'aws-lambda'
-import { v4 as uuidv4 } from 'uuid'
-import { TodoItem } from '../interfaces/todo-item'
-import { dynamoDb } from '../lib/dynamodb'
-import { PutCommand } from '@aws-sdk/lib-dynamodb'
+import { PutCommand } from '@aws-sdk/lib-dynamodb';
+import type { APIGatewayProxyHandler } from 'aws-lambda';
+import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
+import { dynamoDb } from '../lib/dynamodb';
+import { TABLE_NAME } from '../constants';
 
-const tableName = process.env.TABLE_NAME
+// TODO: probs abstract this to a constants file ✅
+
+const getErrorDetails = (error: unknown): string | z.ZodIssue[] => {
+  if (error instanceof z.ZodError) {
+    return error.issues;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+};
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
     if (event.body == null) {
-      throw new Error('Request body is undefined or null')
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Request body is undefined or null' }),
+        headers: { 'Content-Type': 'application/json' },
+      };
     }
 
-    let data: any
+    const todoSchema = z.object({
+      task: z.string().min(1),
+      completed: z.boolean().optional(),
+    });
+
+    let dataParsed: { task: string; completed?: boolean | undefined };
+
     try {
-      data = JSON.parse(event.body)
+      dataParsed = todoSchema.parse(JSON.parse(event.body));
     } catch (e) {
-      throw new Error('Invalid JSON in request body')
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'Invalid input',
+          details: getErrorDetails(e),
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      };
     }
 
-    if (!data || !data.task) {
-      throw new Error('Task is missing in request body')
-    }
-
-    const item: any = {
+    const item = {
       id: uuidv4(),
-      task: data.task,
-      completed: data.completed ? data.completed : false,
+      task: dataParsed.task,
+      completed: dataParsed.completed ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
+    };
 
-    const params: any = {
-      TableName: tableName as string,
+    const params = {
+      TableName: TABLE_NAME,
       Item: item,
       ConditionExpression: 'attribute_not_exists(id)',
-    }
+    };
 
-    await dynamoDb.send(new PutCommand(params))
+    await dynamoDb.send(new PutCommand(params));
 
     return {
       statusCode: 201,
       body: JSON.stringify(item),
       headers: {
         'Content-Type': 'application/json',
-        'X-Custom-Header': 'custom value',
       },
-    }
+    };
   } catch (error) {
-    console.error('Error creating to-do item:', error)
-
+    console.error('Error creating to-do item:', error);
     return {
-      statusCode: 400,
-      body: JSON.stringify({
-        error: 'Could not create to-do item',
-        message: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-        requestId: event.requestContext
-          ? event.requestContext.requestId
-          : 'N/A',
-        debugInfo: 'This is some debug info',
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Custom-Header': 'error',
-      },
-    }
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Could not create to-do item' }),
+      headers: { 'Content-Type': 'application/json' },
+    };
   }
-}
+};

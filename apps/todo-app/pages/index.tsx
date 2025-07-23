@@ -1,6 +1,6 @@
-import React from "react"
+import React from 'react';
 
-const Preamble = () => (
+const Preamble: React.FC = () => (
   <>
     <h1>Welcome to the ATG To-Do App</h1>
     <p>
@@ -8,13 +8,13 @@ const Preamble = () => (
       based API service.
     </p>
   </>
-)
+);
 
-function HomePage() {
+const HomePage: React.FC = () => {
   return (
     <div
       style={{
-        textAlign: "center",
+        textAlign: 'center',
       }}
     >
       <Preamble />
@@ -22,7 +22,7 @@ function HomePage() {
         <a href="/todos">Take a look at the list of To-Dos.</a>
       </p>
     </div>
-  )
-}
+  );
+};
 
-export default HomePage
+export default HomePage;
