@@ -1,19 +1,20 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 
-let options = {}
+let options = {};
 
-// connect to local DB if running offline
 if (process.env.IS_OFFLINE) {
   options = {
-    region: 'localhost',
+    region: 'us-east-1',
     endpoint: 'http://localhost:8000',
     credentials: {
-      accessKeyId: 'MockAccessKeyId',
-      secretAccessKey: 'MockSecretAccessKey',
+      accessKeyId: 'local',
+      secretAccessKey: 'local',
     },
-  }
+    sslEnabled: false,
+    forcePathStyle: true,
+  };
 }
 
-const dynamoDbClient = new DynamoDBClient(options)
-export const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient)
+const dynamoDbClient = new DynamoDBClient(options);
+export const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);

@@ -2,7 +2,6 @@ service: todo-app
 
 custom:
   tableName: TodosTable
-  functionsBasePath: src/handlers
   dynamodb:
     stages:
       - dev
@@ -11,15 +10,16 @@ custom:
       inMemory: true
       migrate: true
       seed: true
-    migration:
-      dir: offline/migrations
     seed:
-      tasks:
+      domain:
         sources:
           - table: ${self:custom.tableName}
-            sources: [./offline/seeds/tasks.json]
+            sources: [offline/seeds/tasks.json]
   esbuild:
     sourcemap: true
+    minify: true
+    target: node18
+    platform: node
     watch:
       pattern:
         - "src/**/*.ts"
@@ -28,9 +28,15 @@ provider:
   name: aws
   runtime: nodejs18.x
   region: us-east-1
+  memorySize: 256
+  timeout: 30
   environment:
     TABLE_NAME: ${self:custom.tableName}
     NODE_OPTIONS: "--enable-source-maps"
+    AWS_ACCESS_KEY_ID: local
+    AWS_SECRET_ACCESS_KEY: local
+    AWS_REGION: us-east-1
+    IS_OFFLINE: true
   iam:
     role:
       statements:
@@ -63,7 +69,7 @@ resources:
 
 functions:
   createTodo:
-    handler: createTodo.handler
+    handler: src/handlers/createTodo.handler
     events:
       - http:
           path: todos
@@ -71,7 +77,7 @@ functions:
           cors: true
 
   getTodos:
-    handler: getTodos.handler
+    handler: src/handlers/getTodos.handler
     events:
       - http:
           path: todos
@@ -79,7 +85,7 @@ functions:
           cors: true
 
   getTodo:
-    handler: getTodo.handler
+    handler: src/handlers/getTodo.handler
     events:
       - http:
           path: todos/{id}
@@ -87,7 +93,7 @@ functions:
           cors: true
 
   updateTodo:
-    handler: updateTodo.handler
+    handler: src/handlers/updateTodo.handler
     events:
       - http:
           path: todos/{id}
@@ -95,7 +101,7 @@ functions:
           cors: true
 
   deleteTodo:
-    handler: deleteTodo.handler
+    handler: src/handlers/deleteTodo.handler
     events:
       - http:
           path: todos/{id}
@@ -103,7 +109,7 @@ functions:
           cors: true
 
   searchTodos:
-    handler: searchTodos.handler
+    handler: src/handlers/searchTodos.handler
     events:
       - http:
           path: todos/search
@@ -111,7 +117,6 @@ functions:
           cors: true
 
 plugins:
-  - serverless-functions-base-path
   - serverless-esbuild
   - serverless-dynamodb
   - serverless-offline
