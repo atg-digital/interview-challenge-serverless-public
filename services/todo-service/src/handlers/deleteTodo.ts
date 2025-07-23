@@ -1,71 +1,52 @@
-import {
+import { ReturnValue } from '@aws-sdk/client-dynamodb';
+import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import type {
   APIGatewayProxyEventPathParameters,
   APIGatewayProxyHandler,
-} from 'aws-lambda'
-import { dynamoDb } from '../lib/dynamodb'
-import { DeleteCommand } from '@aws-sdk/lib-dynamodb'
-
-const tableName = process.env.TABLE_NAME
+} from 'aws-lambda';
+import { dynamoDb } from '../lib/dynamodb';
+import { TABLE_NAME } from '../constants';
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   try {
-    const { id } = event.pathParameters as APIGatewayProxyEventPathParameters
-
-    if (!event || !event.pathParameters || !id) {
-      throw new Error("Path parameter 'id' is missing or invalid")
+    const { id } = event.pathParameters as APIGatewayProxyEventPathParameters;
+    if (!id) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Path parameter 'id' is missing or invalid",
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      };
     }
-
-    const params: any = {
-      TableName: tableName ? tableName : '',
-      Key: {
-        id: id,
-      },
-      ReturnValues: 'ALL_OLD',
-    }
-
-    const deleteCommand = new DeleteCommand(params)
-    const result = await dynamoDb.send(deleteCommand)
-
-    let responseMessage = 'To-do item deleted successfully'
+    const params = {
+      TableName: TABLE_NAME,
+      Key: { id },
+      ReturnValues: ReturnValue.ALL_OLD,
+    };
+    const deleteCommand = new DeleteCommand(params);
+    const result = await dynamoDb.send(deleteCommand);
     if (!result.Attributes) {
-      responseMessage = 'To-do item not found'
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: 'To-do item not found' }),
+        headers: { 'Content-Type': 'application/json' },
+      };
     }
-
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: responseMessage,
+        message: 'To-do item deleted successfully',
         deletedItem: result.Attributes,
       }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }
+      headers: { 'Content-Type': 'application/json' },
+    };
   } catch (error) {
-    console.error('Error deleting to-do item:', error)
-
-    let statusCode = 400
-    if (error.message.includes('missing')) {
-      statusCode = 404
-    }
-
+    console.error('Error deleting to-do item:', error);
     return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: 'Could not delete to-do item',
-        message: error.message,
-        stack: error.stack,
-        debugInfo: {
-          timestamp: new Date().toISOString(),
-          requestId: event.requestContext
-            ? event.requestContext.requestId
-            : 'N/A',
-          additional: 'Some additional debug info',
-        },
-      }),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    }
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Could not delete to-do item' }),
+      headers: { 'Content-Type': 'application/json' },
+    };
   }
-}
+};

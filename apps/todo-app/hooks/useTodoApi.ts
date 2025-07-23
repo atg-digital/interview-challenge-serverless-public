@@ -74,6 +74,31 @@ export function useTodoApi() {
     []
   );
 
+  const deleteTodo = useCallback(async (id: string, onDelete: () => void) => {
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_LAMBDA_API_ENDPOINT}/todos/${id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to delete TODO');
+      }
+
+      onDelete();
+    } catch (error) {
+      console.error('Error deleting TODO:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     searchResults,
@@ -81,5 +106,6 @@ export function useTodoApi() {
     isSearching,
     searchTodos,
     updateTodoStatus,
+    deleteTodo,
   };
 }

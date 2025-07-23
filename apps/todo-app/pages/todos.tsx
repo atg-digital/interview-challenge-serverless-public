@@ -26,6 +26,7 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
     isSearching,
     searchTodos,
     updateTodoStatus,
+    deleteTodo,
   } = useTodoApi();
 
   const {
@@ -52,6 +53,15 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
         prevResults.map((todo) =>
           todo.id === id ? { ...todo, completed: updatedTodo.completed } : todo
         )
+      );
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteTodo(id, () => {
+      setTodosList((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+      setSearchResults((prevResults) =>
+        prevResults.filter((todo) => todo.id !== id)
       );
     });
   };
@@ -105,6 +115,7 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
               <TodoCard
                 todo={todo}
                 onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
                 loading={loading}
               />
             </Grid>
