@@ -49,3 +49,6 @@ Thumbs.db
 # DynamoDB Local
 .dynamodb/
 dynamodb-local-metadata.json
+
+# Serverless deployment artifacts
+.serverless/
