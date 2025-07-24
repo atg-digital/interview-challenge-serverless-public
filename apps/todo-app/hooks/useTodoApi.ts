@@ -99,6 +99,36 @@ export function useTodoApi() {
     }
   }, []);
 
+  const createTodo = useCallback(
+    async (task: string, onSuccess: (newTodo: TodoItem) => void) => {
+      setLoading(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_LAMBDA_API_ENDPOINT}/todos`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ task }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to create TODO');
+        }
+
+        const newTodo: TodoItem = await response.json();
+        onSuccess(newTodo);
+      } catch (error) {
+        console.error('Error creating TODO:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     loading,
     searchResults,
@@ -107,5 +137,6 @@ export function useTodoApi() {
     searchTodos,
     updateTodoStatus,
     deleteTodo,
+    createTodo,
   };
 }

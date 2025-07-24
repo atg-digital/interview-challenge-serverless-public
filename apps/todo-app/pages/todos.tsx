@@ -10,6 +10,7 @@ import type { GetServerSideProps } from 'next';
 import TodoSearch from '../components/TodoSearch';
 import TodoCard from '../components/TodoCard';
 import Pagination from '../components/Pagination';
+import CreateTodoForm from '../components/CreateTodoForm';
 import { useTodoApi } from '../hooks/useTodoApi';
 import { usePagination } from '../hooks/usePagination';
 import type { TodoItem, TodosPageProps } from '../types/todo';
@@ -27,6 +28,7 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
     searchTodos,
     updateTodoStatus,
     deleteTodo,
+    createTodo,
   } = useTodoApi();
 
   const {
@@ -66,6 +68,16 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
     });
   };
 
+  const handleCreate = (task: string) => {
+    createTodo(task, (newTodo) => {
+      setTodosList((prevTodos) => [newTodo, ...prevTodos]);
+      if (searchQuery) {
+        setSearchQuery('');
+        setSearchResults([]);
+      }
+    });
+  };
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     searchTodos(query);
@@ -85,6 +97,8 @@ export default function TodosPage({ todos, error }: TodosPageProps) {
       <Typography variant="h4" gutterBottom>
         TODOs List
       </Typography>
+
+      <CreateTodoForm onSubmit={handleCreate} loading={loading} />
 
       <TodoSearch
         onSearch={handleSearch}

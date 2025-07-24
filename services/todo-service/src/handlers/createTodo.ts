@@ -3,6 +3,7 @@ import type { APIGatewayProxyHandler } from 'aws-lambda';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { dynamoDb } from '../lib/dynamodb';
+import { generateRandomImage } from '../lib/utils';
 import { TABLE_NAME } from '../constants';
 
 // TODO: probs abstract this to a constants file ✅
@@ -51,6 +52,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       id: uuidv4(),
       task: dataParsed.task,
       completed: dataParsed.completed ?? false,
+      image: generateRandomImage(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
