@@ -4,16 +4,20 @@
 
 ### Before you begin
 
+Requirements:
+- Node.js 20 LTS (there are Serverless plugin compatibility issues on newer versions of Node)
+- Docker (for running DynamoDB locally)
 You will need to have `pnpm` installed. You can install `pnpm` by running the following command:
 
 ```bash
+nvm install node 20
 npm install -g pnpm
 ```
 
 ### Setup
 
-- Run `pnpm install`
-- Run `pnpm run install:dynamodb`
+- Run `pnpm -r install` from the project root directory
+- Run `pnpm run dynamodb:setup`
 - Run `pnpm run dev`
 
 You should now be able to connect to the application via HTTP, e.g. `http://localhost:3000/dev/todos`
