@@ -1,3 +1,5 @@
 packages:
   - "apps/*"
   - "services/*"
+
+minimumReleaseAge: 10080 # 7 days
