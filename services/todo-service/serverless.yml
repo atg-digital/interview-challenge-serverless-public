@@ -7,10 +7,7 @@ custom:
     stages:
       - dev
     start:
-      port: 8000
-      inMemory: true
-      migrate: true
-      seed: true
+      noStart: true
     migration:
       dir: offline/migrations
     seed:

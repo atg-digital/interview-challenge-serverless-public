@@ -13,6 +13,10 @@
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "pnpm -r run dev",
-    "test": "pnpm -r run test"
+    "test": "pnpm -r run test",
+    "dynamodb:start": "docker compose up -d",
+    "dynamodb:stop": "docker compose down",
+    "dynamodb:seed": "pnpm --filter @atg/todo-service exec serverless dynamodb migrate --stage dev && pnpm --filter @atg/todo-service exec serverless dynamodb seed --seed=tasks --stage dev",
+    "dynamodb:setup": "pnpm run dynamodb:start && pnpm run dynamodb:seed"
   }
 }
